@@ -1,203 +1,151 @@
-# Almagram - Instagram Clone on AWS
+# Deploy a High-Availability Web App using CloudFormation
+
+This repository contains the implementation of a highly available, scalable web application deployed using AWS CloudFormation.
+
+### Project Introduction
+
+Creating this project demonstrates hands-on experience with Infrastructure as Code. The application is an Instagram-like platform called "Almagram" (previously named "Udagram"), deployed to AWS using CloudFormation templates.
+
+### Project Scenario
+
+The company is creating an Instagram clone called Almagram, with requirements to deploy the application to AWS infrastructure using Infrastructure as Code. The implementation needed to provision the required infrastructure and deploy the application with the necessary supporting software.
+
+Since the underlying network infrastructure is maintained by a separate team, independent stacks were created for the network infrastructure and the application itself. Infrastructure spin-up and tear-down are fully automated so teams can create and discard testing environments on demand.
 
 ![Almagram Infrastructure Diagram](./images/aws_infrastructure_diagram_udagram.jpg)
 
-## Project Overview
+### Project Requirements
 
-This project implements a high-availability deployment for "Almagram", an Instagram-like application, using AWS CloudFormation for Infrastructure as Code (IaC). The infrastructure is designed with fault tolerance and scalability in mind, following AWS best practices.
+#### Infrastructure Diagram
+The diagram above shows all the AWS resources deployed for this solution including:
+- Network resources: VPC, subnets, Internet Gateway, NAT Gateways
+- EC2 resources: Autoscaling group with EC2 instances, Load Balancer, Security Groups
+- Static Content: S3 bucket with CloudFront distribution
 
-## Project Highlights
+#### Network and Server Configuration
+- ✅ Deployed in US East (N. Virginia) region
+- ✅ VPC with four subnets (2 public, 2 private) across two Availability Zones
+- ✅ Internet and NAT gateways for proper connectivity
+- ✅ Launch Templates creating an Auto Scaling Group of 4 Ubuntu servers
+- ✅ Application Load Balancer exposing the application to the internet
+- ✅ Bastion host in public subnet for secure administrative access
 
-- ✅ **Infrastructure as Code**: Complete AWS infrastructure defined using CloudFormation
-- ✅ **High Availability Design**: Multi-AZ deployment with load balancing
-- ✅ **Security Best Practices**: Proper network segmentation and least privilege principles
-- ✅ **Modern UI**: Custom designed Instagram-like interface
-- ✅ **Content Delivery Optimization**: CloudFront integration for static assets
+#### Static Content
+- ✅ S3 bucket with public-read access for static content
+- ✅ Server IAM Role with proper permissions for S3 access
+- ✅ CloudFront distribution for optimized content delivery
 
-## Technologies Used
+#### Security Groups
+- ✅ Load balancer security group allowing all public traffic (0.0.0.0/0) on port 80
+- ✅ Web server security group allowing traffic only from the load balancer
+- ✅ Bastion host security group with restricted SSH access
 
-- **AWS CloudFormation**: Infrastructure as Code for all cloud resources
-- **Amazon VPC**: Network isolation with public and private subnets
-- **Amazon EC2**: Compute resources with Auto Scaling
-- **Elastic Load Balancing**: Application load balancer for traffic distribution
-- **Amazon S3**: Storage for static web assets
-- **Amazon CloudFront**: Content delivery network
-- **AWS IAM**: Identity and access management for secure resource access
+### CloudFormation Templates
 
-## Project Structure
+1. **Separate Network and Application Templates**: Considering that a network team would typically be in charge of the networking resources, two separate templates were delivered:
+   - `network.yml`: Contains all networking resources (VPC, subnets, gateways, etc.)
+   - `udagram.yml`: Contains application-specific resources (servers, load balancer, bucket, etc.)
 
-The project is structured into the following folders:
+2. **Cross-Stack References**: The application template uses outputs from the networking template to identify the hosting VPC and subnets. This is implemented using CloudFormation exports and imports:
 
-* `templates`: Contains the CloudFormation templates for the infrastructure.
-* `parameters`: Contains parameter files for the CloudFormation templates.
-* `scripts`: Contains scripts for automating the deployment and teardown of the CloudFormation stacks.
-* `images`: Contains diagrams and screenshots of the infrastructure.
-
-## Deployment Instructions
-
-To deploy the Almagram infrastructure (previously named "Udagram", then renamed "Almagram), follow these steps:
-
-1. Clone this repository to your local workspace.
-2. Review the CloudFormation templates in the `templates` folder and parameter files in the `parameters` folder.
-3. Make any necessary adjustments to the templates or parameter files based on your requirements.
-4. Navigate to the `scripts` folder and use the `run.sh` script for deployment:
-
-   ```bash
-   # To create stacks
-   ./run.sh create
-   
-   # To deploy using change sets (recommended for production)
-   ./run.sh deploy
-   
-   # To update stacks
-   ./run.sh update
-   
-   # To delete stacks
-   ./run.sh delete
+   ```yaml
+   VpcId:
+     Fn::ImportValue:
+       !Sub "${ProjectName}-vpc-id"
    ```
 
-The `run.sh` script is the primary tool used to manage the entire infrastructure lifecycle, handling the creation, updating, and deletion of both the network and application stacks in the correct order. The `deploy` command is particularly useful as it maintains change sets, allowing you to review the proposed changes before they are applied - a best practice for production environments.
+3. **Practical Output Exports**: The CloudFormation application stack exports include:
+   - The public URL of the LoadBalancer with http:// prefix for convenience
+   - The CloudFront distribution URL for static content access
 
-Alternatively, individual stack scripts are also available:
+4. **Automation Scripts**: The entire infrastructure can be created and destroyed using scripts without UI interactions. The primary script is `run.sh` which manages all CloudFormation operations.
 
-```bash
-# Deploy individual stacks
-./create.sh udagram-network ../templates/network.yml ../parameters/network-parameters.json
-./create.sh udagram-app ../templates/udagram.yml ../parameters/udagram-parameters.json
+### Project Deliverables
 
-# Update individual stacks
-./update.sh udagram-network ../templates/network.yml ../parameters/network-parameters.json
-./update.sh udagram-app ../templates/udagram.yml ../parameters/udagram-parameters.json
+#### Infrastructure Deployment
 
-# Delete individual stacks
-./delete.sh udagram-app
-./delete.sh udagram-network
-```
+To deploy the Almagram infrastructure, follow these steps:
 
-## Architecture Design
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/almasoriaw/almagram-app-devops.git
+   cd almagram-app-devops
+   ```
 
-The Almagram application is built on a resilient architecture that includes:
+2. **Review templates and parameters**
+   - Network template: `templates/network.yml`
+   - Network parameters: `parameters/network-parameters.json`
+   - Application template: `templates/udagram.yml`
+   - Application parameters: `parameters/udagram-parameters.json`
 
-* **VPC with Public and Private Subnets**: Network isolation with public subnets for load balancers and private subnets for application servers
-* **NAT Gateways**: Allowing outbound internet access for instances in private subnets
-* **Auto Scaling Group**: Spanning multiple Availability Zones for high availability
-* **Application Load Balancer**: Distributing traffic across the auto-scaling group
-* **S3 Bucket**: Storing static assets with proper access controls
-* **CloudFront Distribution**: Globally distributed content delivery
-* **IAM Roles and Security Groups**: Principle of least privilege for secure operations
+3. **Deploy the infrastructure**
+   ```bash
+   # Create both network and application stacks
+   ./scripts/run.sh create
+   
+   # Use change sets for controlled deployments (recommended for production)
+   ./scripts/run.sh deploy
+   
+   # Update existing stacks
+   ./scripts/run.sh update
+   
+   # Delete all resources when done
+   ./scripts/run.sh delete
+   ```
 
-## Implementation Results
-
+#### Network Stack Outputs
 ![CloudFormation Stacks](./images/cloudformation_stacks.jpg)
 
-The above image shows the successfully deployed CloudFormation stacks in the AWS Management Console.
+The deployed stacks expose outputs including subnet IDs, VPC ID, security groups, and more that are used by the application stack.
 
-## CloudFormation Design
+#### Access the Application
+After deployment, you can access the application through:
 
-### Template Separation
+- The LoadBalancer URL (exported as stack output with http:// prefix)
+- The CloudFront distribution for static content
 
-The infrastructure is divided into two separate CloudFormation templates:
+### Launching the App
 
-1. **Network Template** (`network.yml`): Contains all networking resources including VPC, subnets, Internet Gateway, NAT Gateways, and route tables. This separation follows the industry best practice where network infrastructure is typically managed by a dedicated network team.
+The deployed application features:
 
-2. **Application Template** (`udagram.yml`): Contains application-specific resources such as EC2 instances, Auto Scaling Group, Load Balancer, S3 bucket, IAM roles, and CloudFront distribution.
+- **Modern Instagram-like UI**: Custom designed interface mimicking Instagram's features
+- **High-availability infrastructure**: Deployed across multiple Availability Zones
+- **Auto-scaling capabilities**: Handles traffic fluctuations automatically
+- **Secure architecture**: Properly segmented network with least privilege access
+- **Optimized content delivery**: Via CloudFront and S3
 
-### Cross-Stack References
+### Technical Implementation
 
-The application stack references resources from the network stack using CloudFormation exports and imports. This approach:
+- **EC2 Configuration**: Instances are provisioned in private subnets with a user data script that:
+  - Installs and configures NGINX
+  - Downloads sample images
+  - Uploads images to S3
+  - Creates the HTML for the Instagram-like interface
+  - Configures proper permissions
 
-- Maintains proper separation of concerns
-- Allows independent updates to network and application stacks
-- Enforces proper resource dependencies
+- **Security Implementation**:
+  - IAM roles with least privilege for EC2 to S3 access
+  - Security groups restricting traffic flow
+  - Private subnets for application servers
+  - Public access only through load balancer
 
-For example, the application template imports VPC and subnet IDs from the network stack using code like:
+### Future Improvements
 
-```yaml
-VpcId:
-  Fn::ImportValue:
-    !Sub "${ProjectName}-vpc-id"
-```
+Planned enhancements for future iterations include:
 
-### Output Exports
+- **Database Integration**: Add RDS or DynamoDB for storing user information and post metadata
+- **User Authentication**: Implement secure login via Amazon Cognito
+- **CI/CD Pipeline**: Create automated deployment pipeline with AWS CodePipeline and CodeBuild
+- **Monitoring and Alerts**: Implement CloudWatch dashboards and alerts for operational visibility
+- **Personal Photo Integration**: Fix current issues with personal photo display in the frontend
 
-Both templates export key resource identifiers for cross-stack references. The application stack exports public URLs including:
+### Requirements
 
-- The Load Balancer URL with `http://` prefix for immediate access
-- The CloudFront distribution URL for accessing static content
+To work with this project, you'll need:
 
-These exports make it easy to access the application after deployment without having to navigate through the AWS Console.
-
-## Technical Challenges and Solutions
-
-During the development of this project, I encountered and solved several technical challenges:
-
-1. **Cross-Stack References**: Implemented export/import functionality between network and application stacks to maintain separation of concerns.
-
-2. **Instance Bootstrapping**: Created a comprehensive user data script to configure EC2 instances with the application and its dependencies.
-
-3. **S3 Content Permissions**: Configured proper bucket policies to securely serve content to users while maintaining appropriate access controls.
-
-## Future Improvements
-
-The following enhancements are planned for future iterations of this project:
-
-* **Personal Photo Integration**: Currently, the code attempts to upload and display a personal photo as one of the feed items. While the upload to S3 is successful (verified by S3 console), there are display issues with the image in the front-end application. This will be resolved by investigating the variable substitution mechanism in the CloudFormation templates.
-
-* **Database Integration**: Add a proper database backend (such as RDS or DynamoDB) for storing user information and post metadata.
-
-* **User Authentication**: Implement user authentication via Amazon Cognito to allow for secure user login and registration.
-
-* **CI/CD Pipeline**: Implement a full CI/CD pipeline using AWS CodePipeline and AWS CodeBuild for automated deployments.
-
-* **Monitoring and Alerts**: Add CloudWatch alarms and dashboards for monitoring the infrastructure.
-
-## Getting Started
-
-### Prerequisites
-
-1. AWS CLI installed and configured with an IAM user having appropriate permissions
-2. Git installed on your local machine
-3. Basic knowledge of AWS CloudFormation and cloud infrastructure
-
-### Dependencies
-
-1. AWS CLI installed and configured in your workspace using an AWS IAM role with Administrator permissions.
-
-2. Access to a diagram creator software of your choice. I used [LucidChart](https://www.lucidchart.com/pages) for the infrastructure diagrams.
- 
-3. Your favorite IDE or text editor ready to work. I used [Visual Studio](https://visualstudio.microsoft.com/vs/).
-
-### Installation
-
-You can get started by cloning this repo in your local workspace:
-
-```bash
-git clone https://github.com/almasoriaw/almagram-app-devops.git
-cd almagram-app-devops
-```
-
-## Testing
-
-Manual testing was performed to ensure:
-
-1. Infrastructure deployment and teardown works correctly
-2. Web servers are properly bootstrapped with the application
-3. Load balancer health checks pass for all instances
-4. Static content is correctly served from S3 via CloudFront
-
-No automated tests are required for this project.
-
-## Key Learnings
-
-Developing this project has provided valuable experience in:
-
-- Designing resilient and scalable cloud architectures
-- Implementing Infrastructure as Code principles
-- Managing complex AWS resource dependencies
-- Automating deployment and configuration processes
-- Applying security best practices in cloud environments
-
-These skills are directly applicable to real-world enterprise cloud deployments and modern DevOps practices.
+- AWS CLI installed and configured with administrator permissions
+- Basic knowledge of AWS CloudFormation and infrastructure as code
+- Git for repository management
 
 ## License
 
