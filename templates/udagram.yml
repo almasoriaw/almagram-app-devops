@@ -1,0 +1,701 @@
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Tag name for our resources
+    Default: udagram-app
+
+  AsgDesiredCapacity:
+    Type: String
+    Description: Desired capacity for the fleet of instances
+    Default: 4
+
+Resources:
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Ref ProjectName
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${ProjectName}-vpc-id"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties: 
+      LaunchTemplateData:
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            apt-get update -y
+            sudo apt-get install nginx awscli -y
+            service nginx start
+
+            # Define the web root directory
+            WEB_DIR="/var/www/html"
+            
+            # Create sample images directory
+            mkdir -p /tmp/udagram-images
+            
+            # Download sample images using curl
+            cd /tmp/udagram-images
+            
+            echo "Downloading images..." >> /var/log/udagram-install.log
+            
+            # Nature image
+            curl -s -o nature.jpg https://images.pexels.com/photos/1287145/pexels-photo-1287145.jpeg?auto=compress&cs=tinysrgb&w=800
+            
+            # Food image
+            curl -s -o food.jpg https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=800
+            
+            # Travel image
+            curl -s -o travel.jpg https://images.pexels.com/photos/338515/pexels-photo-338515.jpeg?auto=compress&cs=tinysrgb&w=800
+            
+            # Pet image
+            curl -s -o pet.jpg https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=800
+            
+            # Avatar images
+            curl -s -o avatar1.jpg https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=128
+            curl -s -o avatar2.jpg https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=128
+            curl -s -o avatar3.jpg https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=128
+            curl -s -o avatar4.jpg https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=128
+            
+            # Download Almas's photo
+            echo "Downloading Almas's photo..." >> /var/log/udagram-install.log
+            curl -s -o almas_photo.jpg https://udagram-app-bucket-172155457485.s3.us-east-1.amazonaws.com/435256866_10160939274485269_6052542569567019189_n.jpg
+            
+            # Verify downloads succeeded
+            ls -la /tmp/udagram-images >> /var/log/udagram-install.log
+            
+            # CUSTOMIZE: To include your own photo, host it online somewhere (like GitHub, Imgur, etc.)
+            # and replace one of the URLs above with your photo's URL
+            # Example: curl -s -o avatar1.jpg https://your-photo-url.jpg
+            
+            # Upload images to S3
+            aws s3 cp /tmp/udagram-images/ s3://${S3Bucket}/ --recursive --acl public-read
+            
+            # Get S3 bucket URL - try different formats
+            S3_BUCKET_NAME="${S3Bucket}"
+            S3_URL="https://$S3_BUCKET_NAME.s3.amazonaws.com"
+            
+            # Log info for debugging
+            echo "Using S3 URL: $S3_URL" >> /var/log/udagram-install.log
+            echo "S3 Bucket Name: $S3_BUCKET_NAME" >> /var/log/udagram-install.log
+            
+            # Verify images were uploaded
+            aws s3 ls s3://$S3_BUCKET_NAME/ >> /var/log/udagram-install.log 2>&1
+            
+            # Make the images public explicitly
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key nature.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key food.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key travel.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key pet.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key avatar1.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key avatar2.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key avatar3.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key avatar4.jpg --acl public-read
+            aws s3api put-object-acl --bucket $S3_BUCKET_NAME --key almas_photo.jpg --acl public-read
+            
+            # Use bash variable directly, not CloudFormation reference
+            
+            # Create the HTML with placeholders for the S3 URL
+            cat <<"EOF" > index.html
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Almagram - Share Your Moments</title>
+              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+              <style>
+                * {
+                  margin: 0;
+                  padding: 0;
+                  box-sizing: border-box;
+                  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                }
+                
+                body {
+                  background-color: #fafafa;
+                  color: #262626;
+                  padding-bottom: 40px;
+                }
+                
+                .navbar {
+                  background-color: white;
+                  height: 54px;
+                  border-bottom: 1px solid #dbdbdb;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  position: sticky;
+                  top: 0;
+                  z-index: 100;
+                }
+                
+                .navbar-container {
+                  width: 975px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 0 20px;
+                }
+                
+                .logo {
+                  font-size: 28px;
+                  font-weight: bold;
+                  text-decoration: none;
+                  color: #262626;
+                }
+                
+                .logo-text {
+                  display: inline-block;
+                  background: linear-gradient(45deg, #405de6, #5851db, #833ab4, #c13584, #e1306c, #fd1d1d);
+                  -webkit-background-clip: text;
+                  color: transparent;
+                  font-weight: bold;
+                }
+                
+                .nav-icons {
+                  display: flex;
+                  gap: 22px;
+                }
+                
+                .nav-icon {
+                  font-size: 22px;
+                  color: #262626;
+                  cursor: pointer;
+                }
+                
+                .container {
+                  max-width: 975px;
+                  margin: 30px auto;
+                  padding: 0 20px;
+                }
+                
+                .welcome-section {
+                  text-align: center;
+                  margin-bottom: 40px;
+                }
+                
+                .welcome-title {
+                  font-size: 28px;
+                  margin-bottom: 10px;
+                  color: #262626;
+                }
+                
+                .welcome-subtitle {
+                  font-size: 16px;
+                  color: #8e8e8e;
+                  margin-bottom: 20px;
+                }
+                
+                .photo-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                  gap: 28px;
+                }
+                
+                .photo-card {
+                  border-radius: 8px;
+                  background: white;
+                  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+                  overflow: hidden;
+                  transition: transform 0.3s ease, box-shadow 0.3s ease;
+                }
+                
+                .photo-card:hover {
+                  transform: translateY(-5px);
+                  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+                }
+                
+                .photo-header {
+                  padding: 12px;
+                  display: flex;
+                  align-items: center;
+                  border-bottom: 1px solid #efefef;
+                }
+                
+                .user-avatar {
+                  width: 32px;
+                  height: 32px;
+                  border-radius: 50%;
+                  margin-right: 10px;
+                  background-color: #efefef;
+                  overflow: hidden;
+                }
+                
+                .avatar-img {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                }
+                
+                .username {
+                  font-weight: 600;
+                  font-size: 14px;
+                }
+                
+                .photo-container {
+                  width: 100%;
+                  aspect-ratio: 1/1;
+                  overflow: hidden;
+                }
+                
+                .photo-img {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  display: block;
+                }
+                
+                .photo-actions {
+                  padding: 12px;
+                  display: flex;
+                  align-items: center;
+                  gap: 16px;
+                }
+                
+                .action-icon {
+                  font-size: 22px;
+                  color: #262626;
+                  cursor: pointer;
+                  transition: color 0.2s;
+                }
+                
+                .action-icon:hover {
+                  color: #833ab4;
+                }
+                
+                .photo-likes {
+                  padding: 0 12px 4px;
+                  font-weight: 600;
+                  font-size: 14px;
+                }
+                
+                .photo-caption {
+                  padding: 0 12px 12px;
+                  font-size: 14px;
+                }
+                
+                .caption-username {
+                  font-weight: 600;
+                  margin-right: 5px;
+                }
+                
+                .footer {
+                  text-align: center;
+                  color: #8e8e8e;
+                  font-size: 12px;
+                  margin-top: 60px;
+                }
+                
+                .footer-links {
+                  display: flex;
+                  justify-content: center;
+                  flex-wrap: wrap;
+                  gap: 16px;
+                  margin-bottom: 16px;
+                }
+                
+                .footer-link {
+                  color: #8e8e8e;
+                  text-decoration: none;
+                }
+                
+                .footer-link:hover {
+                  text-decoration: underline;
+                }
+                
+                @media (max-width: 768px) {
+                  .photo-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                    gap: 14px;
+                  }
+                  
+                  .navbar-container {
+                    padding: 0 10px;
+                  }
+                  
+                  .container {
+                    padding: 0 10px;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              <!-- Navigation Bar -->
+              <nav class="navbar">
+                <div class="navbar-container">
+                  <a href="#" class="logo">
+                    <span class="logo-text">Almagram</span>
+                  </a>
+                  <div class="nav-icons">
+                    <i class="nav-icon fas fa-home"></i>
+                    <i class="nav-icon far fa-paper-plane"></i>
+                    <i class="nav-icon far fa-compass"></i>
+                    <i class="nav-icon far fa-heart"></i>
+                    <i class="nav-icon fas fa-user-circle"></i>
+                  </div>
+                </div>
+              </nav>
+              
+              <!-- Main Content -->
+              <div class="container">
+                <div class="welcome-section">
+                  <h1 class="welcome-title">Welcome to Almagram</h1>
+                  <p class="welcome-subtitle">Share your favorite moments with the world</p>
+                </div>
+                
+                <div class="photo-grid">
+                  <!-- Almas's Photo Card -->
+                  <div class="photo-card">
+                    <div class="photo-header">
+                      <div class="user-avatar">
+                        <img src="https://udagram-app-bucket-172155457485.s3.us-east-1.amazonaws.com/435256866_10160939274485269_6052542569567019189_n.jpg" alt="Almas avatar" class="avatar-img">
+                      </div>
+                      <span class="username">almas_oriaw</span>
+                    </div>
+                    <div class="photo-container">
+                      <img src="https://udagram-app-bucket-172155457485.s3.us-east-1.amazonaws.com/435256866_10160939274485269_6052542569567019189_n.jpg" alt="Almas photo" class="photo-img">
+                    </div>
+                    <div class="photo-actions">
+                      <i class="action-icon far fa-heart"></i>
+                      <i class="action-icon far fa-comment"></i>
+                      <i class="action-icon far fa-paper-plane"></i>
+                    </div>
+                    <div class="photo-likes">99 likes</div>
+                    <div class="photo-caption">
+                      <span class="caption-username">almas_oriaw</span>
+                      My CloudFormation project for Udacity is complete! #aws #cloudformation #udacity
+                    </div>
+                  </div>
+                  
+                  <!-- Photo Card 1 -->
+                  <div class="photo-card">
+                    <div class="photo-header">
+                      <div class="user-avatar">
+                        <img src="S3_BUCKET_PLACEHOLDER/avatar1.jpg" alt="User avatar" class="avatar-img">
+                      </div>
+                      <span class="username">nature_lover</span>
+                    </div>
+                    <div class="photo-container">
+                      <img src="S3_BUCKET_PLACEHOLDER/nature.jpg" alt="Nature scene" class="photo-img">
+                    </div>
+                    <div class="photo-actions">
+                      <i class="action-icon far fa-heart"></i>
+                      <i class="action-icon far fa-comment"></i>
+                      <i class="action-icon far fa-paper-plane"></i>
+                    </div>
+                    <div class="photo-likes">42 likes</div>
+                    <div class="photo-caption">
+                      <span class="caption-username">nature_lover</span>
+                      Beautiful mountain landscape at sunset #nature #photography
+                    </div>
+                  </div>
+                  
+                  <!-- Photo Card 2 -->
+                  <div class="photo-card">
+                    <div class="photo-header">
+                      <div class="user-avatar">
+                        <img src="S3_BUCKET_PLACEHOLDER/avatar2.jpg" alt="User avatar" class="avatar-img">
+                      </div>
+                      <span class="username">food_explorer</span>
+                    </div>
+                    <div class="photo-container">
+                      <img src="S3_BUCKET_PLACEHOLDER/food.jpg" alt="Food photo" class="photo-img">
+                    </div>
+                    <div class="photo-actions">
+                      <i class="action-icon far fa-heart"></i>
+                      <i class="action-icon far fa-comment"></i>
+                      <i class="action-icon far fa-paper-plane"></i>
+                    </div>
+                    <div class="photo-likes">89 likes</div>
+                    <div class="photo-caption">
+                      <span class="caption-username">food_explorer</span>
+                      Homemade pizza with fresh ingredients #foodie #delicious
+                    </div>
+                  </div>
+                  
+                  <!-- Photo Card 3 -->
+                  <div class="photo-card">
+                    <div class="photo-header">
+                      <div class="user-avatar">
+                        <img src="S3_BUCKET_PLACEHOLDER/avatar3.jpg" alt="User avatar" class="avatar-img">
+                      </div>
+                      <span class="username">travel_addict</span>
+                    </div>
+                    <div class="photo-container">
+                      <img src="S3_BUCKET_PLACEHOLDER/travel.jpg" alt="Travel photo" class="photo-img">
+                    </div>
+                    <div class="photo-actions">
+                      <i class="action-icon far fa-heart"></i>
+                      <i class="action-icon far fa-comment"></i>
+                      <i class="action-icon far fa-paper-plane"></i>
+                    </div>
+                    <div class="photo-likes">124 likes</div>
+                    <div class="photo-caption">
+                      <span class="caption-username">travel_addict</span>
+                      Exploring the beautiful streets of Paris #travel #wanderlust
+                    </div>
+                  </div>
+                  
+                  <!-- Photo Card 4 -->
+                  <div class="photo-card">
+                    <div class="photo-header">
+                      <div class="user-avatar">
+                        <img src="S3_BUCKET_PLACEHOLDER/avatar4.jpg" alt="User avatar" class="avatar-img">
+                      </div>
+                      <span class="username">pet_lover</span>
+                    </div>
+                    <div class="photo-container">
+                      <img src="S3_BUCKET_PLACEHOLDER/pet.jpg" alt="Pet photo" class="photo-img">
+                    </div>
+                    <div class="photo-actions">
+                      <i class="action-icon far fa-heart"></i>
+                      <i class="action-icon far fa-comment"></i>
+                      <i class="action-icon far fa-paper-plane"></i>
+                    </div>
+                    <div class="photo-likes">156 likes</div>
+                    <div class="photo-caption">
+                      <span class="caption-username">pet_lover</span>
+                      My adorable puppy enjoying the sunshine #doggo #cutie
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Footer -->
+                <footer class="footer">
+                  <div class="footer-links">
+                    <a href="#" class="footer-link">About</a>
+                    <a href="#" class="footer-link">Help</a>
+                    <a href="#" class="footer-link">Press</a>
+                    <a href="#" class="footer-link">API</a>
+                    <a href="#" class="footer-link">Jobs</a>
+                    <a href="#" class="footer-link">Privacy</a>
+                    <a href="#" class="footer-link">Terms</a>
+                    <a href="#" class="footer-link">Locations</a>
+                    <a href="#" class="footer-link">Top Accounts</a>
+                    <a href="#" class="footer-link">Hashtags</a>
+                    <a href="#" class="footer-link">Language</a>
+                  </div>
+                  <div class="copyright">
+                    © 2023 Almagram from Almas
+                  </div>
+                </footer>
+              </div>
+            </body>
+            </html>
+            EOF
+
+            # Replace the S3 bucket placeholder with the actual URL
+            sed -i "s|S3_BUCKET_PLACEHOLDER|$S3_URL|g" index.html
+            
+            # Add debug info
+            echo "Final HTML content:" >> /var/log/udagram-install.log
+            grep -A 5 "almas_photo" index.html >> /var/log/udagram-install.log
+
+            # Remove the default nginx page and replace it with your custom page
+            sudo rm -r $WEB_DIR/index.*
+            sudo cp index.html $WEB_DIR/
+
+            # Print information for troubleshooting
+            echo "Udagram installation completed" > /var/log/udagram-install.log
+            hostname >> /var/log/udagram-install.log
+            ip addr show >> /var/log/udagram-install.log
+            
+            # Reload nginx to apply changes
+            sudo systemctl restart nginx
+        ImageId: ami-0f9de6e2d2f067fca  # (replace with latest Ubuntu AMI if needed)
+        SecurityGroupIds:
+          - !Ref SecurityGroup
+        InstanceType: t2.micro
+        BlockDeviceMappings:
+          - DeviceName: "/dev/sdk"
+            Ebs:
+              VolumeSize: '10'
+        IamInstanceProfile:
+          Name: !Ref InstanceProfile
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+      - Fn::ImportValue: 
+          !Sub "${ProjectName}-private-subnets"
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      MinSize: '2'
+      DesiredCapacity: 3
+      MaxSize: '6'
+      TargetGroupARNs:
+      - Ref: TargetGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http access to our load balancer
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${ProjectName}-vpc-id"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+      - Fn::ImportValue: !Sub "${ProjectName}-public-subnet1"
+      - Fn::ImportValue: !Sub "${ProjectName}-public-subnet2"
+      SecurityGroups:
+      - Ref: LoadBalancerSecurityGroup
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: TargetGroup
+      LoadBalancerArn:
+        Ref: LoadBalancer
+      Port: '80'
+      Protocol: HTTP
+  ListenerRule:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Properties:
+        Actions:
+        - Type: forward
+          TargetGroupArn: !Ref 'TargetGroup'
+        Conditions:
+        - Field: path-pattern
+          Values: [/]
+        ListenerArn: !Ref 'Listener'
+        Priority: 1
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: 
+        Fn::ImportValue:
+          Fn::Sub: "${ProjectName}-vpc-id"
+
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-bucket-${AWS::AccountId}"  
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false    
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: ObjectWriter
+      VersioningConfiguration:
+        Status: Enabled
+      WebsiteConfiguration:
+        IndexDocument: index.html
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub "${S3Bucket.Arn}/*"
+          - Effect: Allow
+            Principal: 
+              Service: "s3.amazonaws.com"
+            Action:
+              - "s3:PutObject"
+            Resource: !Sub "${S3Bucket.Arn}/*"
+            Condition:
+              StringEquals:
+                "s3:x-amz-acl": "public-read"
+
+  IAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref ProjectName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: 'Allow'
+          Principal:
+            Service:
+            - 'ec2.amazonaws.com'
+          Action:
+          - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: s3
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:PutObjectAcl'
+              - 's3:ListBucket'
+              Resource:
+                - !Sub "${S3Bucket.Arn}/*"
+                - !Sub "${S3Bucket.Arn}"
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+      - !Ref IAMRole
+  
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt S3Bucket.DomainName
+            Id: S3Origin
+            S3OriginConfig: {}
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: allow-all    
+          ForwardedValues:
+            QueryString: false      
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+
+Outputs:
+  LoadBalancerDNSName:
+    Description: Public URL to access the LoadBalancer
+    Value: !Join ["", ["http://", !GetAtt LoadBalancer.DNSName]]
+    Export:
+      Name: !Sub "${ProjectName}-loadbalancer-dns"
+
+  CloudFrontURL:
+    Description: Public URL to access static content via CloudFront
+    Value: !Join ["", ["https://", !GetAtt CloudFrontDistribution.DomainName]]
+    Export:
+      Name: !Sub "${ProjectName}-cloudfront-url"
