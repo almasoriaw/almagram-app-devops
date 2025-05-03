@@ -12,6 +12,8 @@ The company is creating an Instagram clone called Almagram, with requirements to
 
 Since the underlying network infrastructure is maintained by a separate team, independent stacks were created for the network infrastructure and the application itself. Infrastructure spin-up and tear-down are fully automated so teams can create and discard testing environments on demand.
 
+Infrastructure Diagram created with Lucidchart by Alma Soria.
+
 ![Almagram Infrastructure Diagram](./images/aws_infrastructure_diagram_udagram.jpg)
 
 ### Project Requirements
@@ -60,8 +62,6 @@ The diagram above shows all the AWS resources deployed for this solution includi
 
 4. **Automation Scripts**: The entire infrastructure can be created and destroyed using scripts without UI interactions. The primary script is `run.sh` which manages all CloudFormation operations.
 
-### Project Deliverables
-
 #### Infrastructure Deployment
 
 To deploy the Almagram infrastructure, follow these steps:
@@ -94,9 +94,11 @@ To deploy the Almagram infrastructure, follow these steps:
    ```
 
 #### Network Stack Outputs
-![CloudFormation Stacks](./images/cloudformation_stacks.jpg)
 
 The deployed stacks expose outputs including subnet IDs, VPC ID, security groups, and more that are used by the application stack.
+
+Stacks:
+![CloudFormation Stacks](./images/cloudformation_stacks.jpg)
 
 #### Access the Application
 After deployment, you can access the application through:
@@ -113,6 +115,10 @@ The deployed application features:
 - **Auto-scaling capabilities**: Handles traffic fluctuations automatically
 - **Secure architecture**: Properly segmented network with least privilege access
 - **Optimized content delivery**: Via CloudFront and S3
+
+Almagram deployed:
+
+![image](https://github.com/user-attachments/assets/871ccf86-8801-438b-980e-d374a7bb015d)
 
 ### Technical Implementation
 
