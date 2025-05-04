@@ -2,7 +2,7 @@
 
 # Almagram
 
-[![Product Name Screen Shot][product-screenshot]](./images/almagram.jpg)
+[![Almagram][product-screenshot]](./images/almagram.jpg)
 
   <h3 align="center">High-Availability Instagram Clone on AWS</h3>
 
@@ -90,6 +90,8 @@ This project is organized into the following directories:
 almagram-app-devops/
 ├── images/                  # Screenshots and diagrams
 ├── parameters/              # CloudFormation parameter files
+│   ├── network-parameters.json          # Network infrastructure parameters
+│   └── udagram-parameters.json          # Application resources parameters
 ├── scripts/                 # Deployment automation scripts
 ├── starter/                 # Initial project templates
 ├── templates/               # CloudFormation templates
@@ -124,8 +126,6 @@ VpcId:
    - The CloudFront distribution URL for static content access
 
 4. **Automation Scripts**: The entire infrastructure can be created and destroyed using scripts without UI interactions. The primary script is `run.sh` which manages all CloudFormation operations.
-
-### Project Deliverables
 
 #### Infrastructure Deployment
 
@@ -183,6 +183,9 @@ The deployed application features:
 - **Auto-scaling capabilities**: Handles traffic fluctuations automatically
 - **Secure architecture**: Properly segmented network with least privilege access
 - **Optimized content delivery**: Via CloudFront and S3
+
+
+![image](https://github.com/user-attachments/assets/83f121ce-f53e-496b-9fc3-8ddbf0cc091b)
 
 ### Technical Implementation
 
