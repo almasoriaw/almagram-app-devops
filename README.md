@@ -182,6 +182,7 @@ The deployed application features:
 - **Secure architecture**: Properly segmented network with least privilege access
 - **Optimized content delivery**: Via CloudFront and S3
 
+Almagram app deployed:
 
 ![image](https://github.com/user-attachments/assets/83f121ce-f53e-496b-9fc3-8ddbf0cc091b)
 
