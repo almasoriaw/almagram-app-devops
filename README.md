@@ -33,28 +33,11 @@
 
 Almagram (previously named "Udagram") is an Instagram clone application deployed on AWS infrastructure using CloudFormation for Infrastructure as Code. This project implements a high-availability, fault-tolerant architecture following AWS best practices.
 
-The project scenario involves a company creating an Instagram clone that requires:
-- Infrastructure provisioned through code (no manual console configuration)
-- Application deployed across multiple availability zones for high availability
-- Network infrastructure and application resources separated into distinct stacks
-- Automated infrastructure spin-up and tear-down for testing environments
+### Project Scenario
 
-[product-screenshot]: ./images/almagram.jpg
+The company is creating an Instagram clone called Almagram, with requirements to deploy the application to AWS infrastructure using Infrastructure as Code. The implementation needed to provision the required infrastructure and deploy the application with the necessary supporting software.
 
-## Built With
-
-This project leverages several AWS services and technologies:
-
-* ![AWS](https://img.shields.io/badge/AWS-%23FF9900.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)
-* ![CloudFormation](https://img.shields.io/badge/CloudFormation-FFB71B.svg?style=for-the-badge&logo=amazon-aws&logoColor=white)
-* ![EC2](https://img.shields.io/badge/EC2-F90.svg?style=for-the-badge&logo=amazon-ec2&logoColor=white)
-* ![S3](https://img.shields.io/badge/S3-569A31.svg?style=for-the-badge&logo=amazon-s3&logoColor=white)
-* ![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)
-* ![NGINX](https://img.shields.io/badge/nginx-%23009639.svg?style=for-the-badge&logo=nginx&logoColor=white)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-## Infrastructure Architecture
+Since the underlying network infrastructure is maintained by a separate team, independent stacks were created for the network infrastructure and the application itself. Infrastructure spin-up and tear-down are fully automated so teams can create and discard testing environments on demand.
 
 ![Almagram Infrastructure Diagram](./images/aws_infrastructure_diagram_udagram.jpg)
 
@@ -136,17 +119,17 @@ VpcId:
     !Sub "${ProjectName}-vpc-id"
 ```
 
-Output exports include convenient access URLs with proper prefixes:
-```yaml
-LoadBalancerDNSName:
-  Value: !Join ["", ["http://", !GetAtt LoadBalancer.DNSName]]
-```
+3. **Practical Output Exports**: The CloudFormation application stack exports include:
+   - The public URL of the LoadBalancer with http:// prefix for convenience
+   - The CloudFront distribution URL for static content access
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+4. **Automation Scripts**: The entire infrastructure can be created and destroyed using scripts without UI interactions. The primary script is `run.sh` which manages all CloudFormation operations.
 
-## Deployment
+### Project Deliverables
 
-Follow these steps to deploy the Almagram infrastructure to AWS:
+#### Infrastructure Deployment
+
+To deploy the Almagram infrastructure, follow these steps:
 
 ### 1. Clone the Repository
 
@@ -180,65 +163,43 @@ The primary deployment tool is the `run.sh` script which manages all CloudFormat
 ./scripts/run.sh delete
 ```
 
-### 4. Monitor Deployment
-
-Once deployed, you can monitor your stacks in the AWS CloudFormation console:
-
+#### Network Stack Outputs
 ![CloudFormation Stacks](./images/cloudformation_stacks.jpg)
 
-### 5. Access the Application
+The deployed stacks expose outputs including subnet IDs, VPC ID, security groups, and more that are used by the application stack.
 
-After successful deployment, access the application through:
+#### Access the Application
+After deployment, you can access the application through:
 
-* The Load Balancer URL (exported as stack output)
-* The CloudFront distribution URL for optimized content delivery
+- The LoadBalancer URL (exported as stack output with http:// prefix)
+- The CloudFront distribution for static content
 
-<p align="right">(<a href="#top">back to top</a>)</p>
+### Launching the App
 
-## Technical Implementation
+The deployed application features:
 
-### Application Features
+- **Modern Instagram-like UI**: Custom designed interface mimicking Instagram's features
+- **High-availability infrastructure**: Deployed across multiple Availability Zones
+- **Auto-scaling capabilities**: Handles traffic fluctuations automatically
+- **Secure architecture**: Properly segmented network with least privilege access
+- **Optimized content delivery**: Via CloudFront and S3
 
-* **Modern Instagram-like UI**: Custom designed responsive interface with Instagram styling
-* **Feed Display**: Shows user posts with images, likes, and comments
-* **Interactive Elements**: Like buttons, comment areas, and navigation icons
-* **User Profiles**: Avatar images and usernames for post attribution
+### Technical Implementation
 
-### EC2 Instance Configuration
+- **EC2 Configuration**: Instances are provisioned in private subnets with a user data script that:
+  - Installs and configures NGINX
+  - Downloads sample images
+  - Uploads images to S3
+  - Creates the HTML for the Instagram-like interface
+  - Configures proper permissions
 
-The EC2 instances are provisioned with a comprehensive bootstrap script that:
+- **Security Implementation**:
+  - IAM roles with least privilege for EC2 to S3 access
+  - Security groups restricting traffic flow
+  - Private subnets for application servers
+  - Public access only through load balancer
 
-```bash
-# Core software installation
-apt-get update -y
-sudo apt-get install nginx awscli -y
-service nginx start
-
-# Content preparation
-mkdir -p /tmp/udagram-images
-cd /tmp/udagram-images
-# Download sample images...
-
-# S3 integration
-aws s3 cp /tmp/udagram-images/ s3://${S3Bucket}/ --recursive --acl public-read
-
-# Front-end deployment
-sudo cp index.html /var/www/html/
-```
-
-### Security Implementation
-
-* **Defense in Depth**: Multiple layers of security controls
-* **Network Segmentation**: Web servers in private subnets
-* **Access Control**:
-  * IAM roles with least privilege principle
-  * Security groups restricting traffic paths
-  * Load balancer as the only public entry point
-* **Data Protection**: Encrypted S3 bucket with proper access policies
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-## Roadmap
+### Future Improvements
 
 Planned enhancements for future iterations of this project:
 
