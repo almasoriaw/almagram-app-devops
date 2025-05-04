@@ -2,8 +2,6 @@
 
 # Almagram
 
-[![Almagram][product-screenshot]](./images/almagram.jpg)
-
   <h3 align="center">High-Availability Instagram Clone on AWS</h3>
 
   <p align="center">
