@@ -1,16 +1,43 @@
-# Deploy a High-Availability Web App using CloudFormation
+<div align="center">
 
-This repository contains the implementation of a highly available, scalable web application deployed using AWS CloudFormation.
+# Almagram
 
-### Project Introduction
+[![Product Name Screen Shot][product-screenshot]](./images/almagram.jpg)
 
-Creating this project demonstrates hands-on experience with Infrastructure as Code. The application is an Instagram-like platform called "Almagram" (previously named "Udagram"), deployed to AWS using CloudFormation templates.
+  <h3 align="center">High-Availability Instagram Clone on AWS</h3>
 
-### Project Scenario
+  <p align="center">
+    A scalable, resilient Instagram-like application deployed using CloudFormation IaC
+    <br />
+    <a href="https://github.com/almasoriaw/almagram-app-devops"><strong>Explore the docs »</strong></a>
+    <br />
+  </p>
+</div>
 
-The company is creating an Instagram clone called Almagram, with requirements to deploy the application to AWS infrastructure using Infrastructure as Code. The implementation needed to provision the required infrastructure and deploy the application with the necessary supporting software.
+<!-- TABLE OF CONTENTS -->
+<details>
+  <summary>Table of Contents</summary>
+  <ol>
+    <li><a href="#about-the-project">About The Project</a></li>
+    <li><a href="#built-with">Built With</a></li>
+    <li><a href="#infrastructure-architecture">Infrastructure Architecture</a></li>
+    <li><a href="#getting-started">Getting Started</a></li>
+    <li><a href="#deployment">Deployment</a></li>
+    <li><a href="#technical-implementation">Technical Implementation</a></li>
+    <li><a href="#roadmap">Roadmap</a></li>
+    <li><a href="#license">License</a></li>
+  </ol>
+</details>
 
-Since the underlying network infrastructure is maintained by a separate team, independent stacks were created for the network infrastructure and the application itself. Infrastructure spin-up and tear-down are fully automated so teams can create and discard testing environments on demand.
+## About The Project
+
+Almagram (previously named "Udagram") is an Instagram clone application deployed on AWS infrastructure using CloudFormation for Infrastructure as Code. This project implements a high-availability, fault-tolerant architecture following AWS best practices.
+
+The project scenario involves a company creating an Instagram clone that requires:
+- Infrastructure provisioned through code (no manual console configuration)
+- Application deployed across multiple availability zones for high availability
+- Network infrastructure and application resources separated into distinct stacks
+- Automated infrastructure spin-up and tear-down for testing environments
 
 ![Almagram Infrastructure Diagram](./images/aws_infrastructure_diagram_udagram.jpg)
 
